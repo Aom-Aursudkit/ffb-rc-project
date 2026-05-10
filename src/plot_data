@@ -1,0 +1,73 @@
+import matplotlib.pyplot as plt
+
+def plot_rc_data(filename):
+    timestamps = []
+    angles = []
+    amps = []
+
+    try:
+        with open(filename, 'r') as file:
+            for line in file:
+                if not line.strip() or ',' not in line:
+                    continue
+                try:
+                    parts = line.strip().split(',')
+                    t = float(parts[0])
+                    ang = float(parts[1])
+                    amp = float(parts[2])
+                    
+                    timestamps.append(t / 1000.0)
+                    angles.append(ang)
+                    amps.append(amp)
+                except ValueError:
+                    continue
+
+        if not timestamps:
+            print("No valid data found in file.")
+            return
+
+        # Start time at 0 for cleaner X-axis
+        start_time = timestamps[0]
+        timestamps = [t - start_time for t in timestamps]
+
+        fig, ax1 = plt.subplots(figsize=(12, 6))
+
+        # --- Axis 1: Steering Angle ---
+        color_angle = 'tab:blue'
+        ax1.set_xlabel('Time (seconds)')
+        ax1.set_ylabel('Steering Angle (Degrees)', color=color_angle, fontsize=12)
+        ax1.plot(timestamps, angles, color=color_angle, label='Angle', linewidth=2.5)
+        ax1.tick_params(axis='y', labelcolor=color_angle)
+        
+        # FIX SCALING FOR ANGLE: 0 to 180 degrees
+        ax1.set_ylim(-10, 190) 
+        ax1.set_yticks(range(0, 181, 30)) # Marks every 30 degrees
+
+        # --- Axis 2: Current ---
+        ax2 = ax1.twinx()
+        color_amps = 'tab:red'
+        ax2.set_ylabel('Current (Amperes)', color=color_amps, fontsize=12)
+        ax2.plot(timestamps, amps, color=color_amps, label='Current', alpha=0.7, linewidth=1.5)
+        ax2.tick_params(axis='y', labelcolor=color_amps)
+
+        # FIX SCALING FOR CURRENT: 
+        # Since it's a 5A sensor, -0.5 to 2.0A is usually the "sweet spot" for RC cars
+        # Adjust 2.0 to 5.0 if your motors are very powerful.
+        ax2.set_ylim(-2.0, 4.0) 
+
+        # Add a horizontal line at 0A for reference
+        ax2.axhline(0, color='black', linewidth=0.8, linestyle='--')
+
+        plt.title('RC Car Steering Analysis: Idle Baseline & Slow Sweep', fontsize=14)
+        ax1.grid(True, which='both', linestyle='--', alpha=0.5)
+        fig.tight_layout()
+        
+        print(f"Successfully plotted {len(timestamps)} data points.")
+        plt.show()
+
+    except FileNotFoundError:
+        print(f"Error: The file '{filename}' was not found.")
+
+if __name__ == "__main__":
+    # Note: Use forward slashes '/' or double backslashes '\\' in Windows paths
+    plot_rc_data('data/steering_air.csv')

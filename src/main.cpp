@@ -53,6 +53,41 @@ float readCurrent()
     return Amps;
 }
 
+// Function to move to a target slowly and measure every degree
+void slowMoveAndMeasure(int targetAngle) {
+    int startAngle = (int)steerValue;
+    int step = (startAngle < targetAngle) ? 1 : -1;
+    
+    unsigned long lastStepTime = 0;
+    const int stepDelay = 25; // How often to change the angle (ms)
+
+    while (startAngle != targetAngle) {
+        // 1. Move the servo every 'stepDelay' milliseconds
+        if (millis() - lastStepTime >= stepDelay) {
+            startAngle += step;
+            steerValue = startAngle;
+            
+            int duty = map(startAngle, 0, 180, steerMin, steerMax);
+            ledcWrite(SERVO_PIN, duty);
+            
+            lastStepTime = millis();
+        }
+
+        // 2. Measure Current as fast as the code can loop
+        // (This will run many times between each 1-degree step)
+        float amps = readCurrent();
+        
+        Serial.print(millis());
+        Serial.print(",");
+        Serial.print(startAngle); // Current target angle
+        Serial.print(",");
+        Serial.println(amps, 3);
+        
+        // Optional: yield to prevent Watchdog Timer issues on ESP32
+        yield(); 
+    }
+}
+
 void setup()
 {
     pixels.begin();
@@ -98,47 +133,72 @@ void setup()
 
     pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // GREEN
     pixels.show();
+
+
+    int duty = map(90, 0, 180, steerMin, steerMax);
+    ledcWrite(SERVO_PIN, duty);
+    delay(100);
+    // SEQUENCE: Middle(90) -> Right(180) -> Left(0) -> Middle(90)
+    slowMoveAndMeasure(180);
+    delay(500); // Pause at extreme
+    slowMoveAndMeasure(0);
+    delay(500); // Pause at extreme
+    slowMoveAndMeasure(90);
+
+    // idle
+    // unsigned long startIdle = millis();
+    // // Loop for 10,000 milliseconds (10 seconds)
+    // while (millis() - startIdle < 10000)
+    // {
+    //     float amps = readCurrent();
+
+    //     // Log data: Time, Angle(90), Amps
+    //     Serial.print(millis());
+    //     Serial.print(",");
+    //     Serial.print(90); // Fixed at middle
+    //     Serial.print(",");
+    //     Serial.println(amps, 3);
+    // }
 }
 
 void loop()
 {
-    
-    int packetSize = udp.parsePacket();
-    if (packetSize)
-    {
-        int len = udp.read(packetBuffer, 255);
-        if (len > 0)
-        {
-            packetBuffer[len] = 0;
+    // int packetSize = udp.parsePacket();
+    // if (packetSize)
+    // {
+    //     int len = udp.read(packetBuffer, 255);
+    //     if (len > 0)
+    //     {
+    //         packetBuffer[len] = 0;
 
-            int items = sscanf(packetBuffer, "S%f T%f", &steerValue, &throttleValue);
+    //         int items = sscanf(packetBuffer, "S%f T%f", &steerValue, &throttleValue);
 
-            if (items == 2)
-            {
-                // --- STEERING (Servo) ---
-                int steerDuty = map((int)steerValue, 0, 180, steerMin, steerMax);
-                ledcWrite(SERVO_PIN, steerDuty);
+    //         if (items == 2)
+    //         {
+    //             // --- STEERING (Servo) ---
+    //             int steerDuty = map((int)steerValue, 0, 180, steerMin, steerMax);
+    //             ledcWrite(SERVO_PIN, steerDuty);
 
-                // --- THROTTLE (ESC) ---
-                int throttleDuty = map((int)throttleValue, -100, 100, throttleMin, throttleMax);
-                ledcWrite(ESC_PIN, throttleDuty);
+    //             // --- THROTTLE (ESC) ---
+    //             int throttleDuty = map((int)throttleValue, -100, 100, throttleMin, throttleMax);
+    //             ledcWrite(ESC_PIN, throttleDuty);
 
-                Serial.print("Steer: ");
-                Serial.print(steerValue);
-                Serial.print(" | Throttle: ");
-                Serial.print(throttleValue);
-                Serial.print(" | ");
-            }
-            else
-            {
-                Serial.print("Raw Packet Error: ");
-                Serial.print(packetBuffer);
-                Serial.print(" | ");
-            }
-        }
-    }
-    currentAmps = readCurrent();
-    Serial.print("Current: ");
-    Serial.print(currentAmps);
-    Serial.println(" A");
+    //             Serial.print("Steer: ");
+    //             Serial.print(steerValue);
+    //             Serial.print(" | Throttle: ");
+    //             Serial.print(throttleValue);
+    //             Serial.print(" | ");
+    //         }
+    //         else
+    //         {
+    //             Serial.print("Raw Packet Error: ");
+    //             Serial.print(packetBuffer);
+    //             Serial.print(" | ");
+    //         }
+    //     }
+    // }
+    // currentAmps = readCurrent();
+    // Serial.print("Current: ");
+    // Serial.print(currentAmps);
+    // Serial.println(" A");
 }
