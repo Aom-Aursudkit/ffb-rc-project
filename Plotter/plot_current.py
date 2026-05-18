@@ -70,4 +70,4 @@ def plot_rc_data(filename):
 
 if __name__ == "__main__":
     # Note: Use forward slashes '/' or double backslashes '\\' in Windows paths
-    plot_rc_data('data/steering_air.csv')
+    plot_rc_data('data\\steering_laminate2.csv')

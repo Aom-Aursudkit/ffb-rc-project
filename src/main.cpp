@@ -2,6 +2,9 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
+#include <Wire.h>
+#include <Adafruit_BNO08x.h>
+#include "HX711.h"
 
 // --- AP Configuration ---
 const char *ssid = "ESP32-RC-CAR";
@@ -10,6 +13,23 @@ unsigned int localPort = 4210;
 
 WiFiUDP udp;
 char packetBuffer[255];
+
+// --- IMU Configuration ---
+#define SDA_PIN 6
+#define SCL_PIN 7
+#define BNO08X_ADDR 0x4A
+Adafruit_BNO08x bno08x(-1);
+sh2_SensorValue_t sensorValue;
+
+// IMU Data variables
+float linAccX, linAccY, linAccZ; 
+float gyroX, gyroY, gyroZ;       
+
+// --- Load Cell Configuration ---
+const int LOADCELL_DOUT_PIN = 5;
+const int LOADCELL_SCK_PIN = 18;
+HX711 scale;
+const float LOADCELL_SCALE = 210; // Calculated from your test
 
 float steerValue = 90.0;   // Default Neutral
 float throttleValue = 0.0; // Default Stop
@@ -41,15 +61,10 @@ float currentAmps = 0.0;
 float readCurrent()
 {
     int rawADC = analogRead(CURRENT_PIN);
-    // Convert ADC (0-4095) to Voltage (0-3.3V)
     float voltage = (rawADC / 4095.0) * 3.3;
-
-    // For an ACS712 (5A version) centered at 1.65V (offset)
-    // Sensitivity is roughly 0.185 V/A (Check your sensor's datasheet!)
     float offsetVoltage = 1.65;
     float sensitivity = 0.185;
     float Amps = (voltage - offsetVoltage) / sensitivity;
-
     return Amps;
 }
 
@@ -62,79 +77,25 @@ void slowMoveAndMeasure(int targetAngle) {
     const int stepDelay = 25; // How often to change the angle (ms)
 
     while (startAngle != targetAngle) {
-        // 1. Move the servo every 'stepDelay' milliseconds
         if (millis() - lastStepTime >= stepDelay) {
             startAngle += step;
             steerValue = startAngle;
-            
             int duty = map(startAngle, 0, 180, steerMin, steerMax);
             ledcWrite(SERVO_PIN, duty);
-            
             lastStepTime = millis();
         }
 
-        // 2. Measure Current as fast as the code can loop
-        // (This will run many times between each 1-degree step)
         float amps = readCurrent();
-        
         Serial.print(millis());
         Serial.print(",");
-        Serial.print(startAngle); // Current target angle
+        Serial.print(startAngle);
         Serial.print(",");
         Serial.println(amps, 3);
-        
-        // Optional: yield to prevent Watchdog Timer issues on ESP32
         yield(); 
     }
 }
 
-void setup()
-{
-    pixels.begin();
-    pixels.setBrightness(30);
-    pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // RED
-    pixels.show();
-
-    Serial.begin(115200);
-    delay(2000);
-
-    // Configure ADC
-    analogReadResolution(12); // 0-4095
-    pinMode(CURRENT_PIN, INPUT);
-
-    ledcAttach(SERVO_PIN, freq, resolution);
-    ledcAttach(ESC_PIN, freq, resolution);
-    Serial.println("PWM Initialized on Pin 15 (Servo) and Pin 23 (ESC)");
-
-    steerMin = map(steerLimit, 0, 180, PWM_MIN, PWM_MAX);
-    steerMax = map(180 - steerLimit, 0, 180, PWM_MIN, PWM_MAX);
-
-    throttleMin = map(-100 + throttleLimit, -100, 100, PWM_MIN, PWM_MAX);
-    throttleMax = map(100 - throttleLimit, -100, 100, PWM_MIN, PWM_MAX);
-
-    // Move servo to neutral on start
-    int initialDuty = map(90, 0, 180, steerMin, steerMax);
-    ledcWrite(SERVO_PIN, initialDuty);
-
-    // ARMING ESC
-    int neutralDuty = map(0, -100, 100, throttleMin, throttleMax);
-    ledcWrite(ESC_PIN, neutralDuty);
-
-    Serial.println("Configuring Access Point...");
-    // Set the ESP32 to be an Access Point
-    WiFi.softAP(ssid, password);
-
-    IPAddress myIP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
-    Serial.println(myIP); // 192.168.4.1
-
-    udp.begin(localPort);
-    Serial.println("UDP server started. Ready for controller input!");
-
-    pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // GREEN
-    pixels.show();
-
-
+void test_current_sensor(){
     int duty = map(90, 0, 180, steerMin, steerMax);
     ledcWrite(SERVO_PIN, duty);
     delay(100);
@@ -144,61 +105,100 @@ void setup()
     slowMoveAndMeasure(0);
     delay(500); // Pause at extreme
     slowMoveAndMeasure(90);
+}
 
-    // idle
-    // unsigned long startIdle = millis();
-    // // Loop for 10,000 milliseconds (10 seconds)
-    // while (millis() - startIdle < 10000)
-    // {
-    //     float amps = readCurrent();
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial) delay(10); // Wait for Serial
+    pixels.begin();
+    pixels.setBrightness(30);
+    pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // RED
+    pixels.show();
 
-    //     // Log data: Time, Angle(90), Amps
-    //     Serial.print(millis());
-    //     Serial.print(",");
-    //     Serial.print(90); // Fixed at middle
-    //     Serial.print(",");
-    //     Serial.println(amps, 3);
-    // }
+    // 1. Initialize IMU
+    Wire.begin(SDA_PIN, SCL_PIN);
+    delay(500);
+    if (!bno08x.begin_I2C(BNO08X_ADDR)) {
+        Serial.println("Failed to find BNO08x chip at 0x4A!");
+    } else {
+        Serial.println("BNO08x Found!");
+        bno08x.enableReport(SH2_LINEAR_ACCELERATION);
+        bno08x.enableReport(SH2_GYROSCOPE_CALIBRATED);
+    }
+    
+    // 2. Initialize Load Cell
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    scale.set_scale(LOADCELL_SCALE);
+    scale.tare();
+
+    delay(2000);
+    analogReadResolution(12);
+    pinMode(CURRENT_PIN, INPUT);
+
+    ledcAttach(SERVO_PIN, freq, resolution);
+    ledcAttach(ESC_PIN, freq, resolution);
+
+    steerMin = map(steerLimit, 0, 180, PWM_MIN, PWM_MAX);
+    steerMax = map(180 - steerLimit, 0, 180, PWM_MIN, PWM_MAX);
+    throttleMin = map(-100 + throttleLimit, -100, 100, PWM_MIN, PWM_MAX);
+    throttleMax = map(100 - throttleLimit, -100, 100, PWM_MIN, PWM_MAX);
+
+    ledcWrite(SERVO_PIN, map(90, 0, 180, steerMin, steerMax));
+    ledcWrite(ESC_PIN, map(0, -100, 100, throttleMin, throttleMax));
+
+    WiFi.softAP(ssid, password, 6);
+    udp.begin(localPort);
+    
+    pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // GREEN
+    pixels.show();
+    Serial.println("System Ready.");
 }
 
 void loop()
 {
-    // int packetSize = udp.parsePacket();
-    // if (packetSize)
-    // {
-    //     int len = udp.read(packetBuffer, 255);
-    //     if (len > 0)
-    //     {
-    //         packetBuffer[len] = 0;
+    // Read IMU Data
+    if (bno08x.getSensorEvent(&sensorValue)) {
+        if (sensorValue.sensorId == SH2_LINEAR_ACCELERATION) {
+            linAccX = sensorValue.un.linearAcceleration.x;
+            linAccY = sensorValue.un.linearAcceleration.y;
+            linAccZ = sensorValue.un.linearAcceleration.z;
+        } else if (sensorValue.sensorId == SH2_GYROSCOPE_CALIBRATED) {
+            gyroX = sensorValue.un.gyroscope.x;
+            gyroY = sensorValue.un.gyroscope.y;
+            gyroZ = sensorValue.un.gyroscope.z;
+        }
+    }
 
-    //         int items = sscanf(packetBuffer, "S%f T%f", &steerValue, &throttleValue);
+    // Read Load Cell
+    float loadCellGrams = scale.is_ready() ? scale.get_units(1) : 0.0;
 
-    //         if (items == 2)
-    //         {
-    //             // --- STEERING (Servo) ---
-    //             int steerDuty = map((int)steerValue, 0, 180, steerMin, steerMax);
-    //             ledcWrite(SERVO_PIN, steerDuty);
+    int packetSize = udp.parsePacket();
+    if (packetSize)
+    {
+        int len = udp.read(packetBuffer, 255);
+        if (len > 0)
+        {
+            packetBuffer[len] = 0;
+            if (sscanf(packetBuffer, "S%f T%f", &steerValue, &throttleValue) == 2)
+            {
+                // --- STEERING (Servo) ---
+                int steerDuty = map((int)steerValue, 0, 180, steerMin, steerMax);
+                ledcWrite(SERVO_PIN, steerDuty);
 
-    //             // --- THROTTLE (ESC) ---
-    //             int throttleDuty = map((int)throttleValue, -100, 100, throttleMin, throttleMax);
-    //             ledcWrite(ESC_PIN, throttleDuty);
-
-    //             Serial.print("Steer: ");
-    //             Serial.print(steerValue);
-    //             Serial.print(" | Throttle: ");
-    //             Serial.print(throttleValue);
-    //             Serial.print(" | ");
-    //         }
-    //         else
-    //         {
-    //             Serial.print("Raw Packet Error: ");
-    //             Serial.print(packetBuffer);
-    //             Serial.print(" | ");
-    //         }
-    //     }
-    // }
-    // currentAmps = readCurrent();
-    // Serial.print("Current: ");
-    // Serial.print(currentAmps);
-    // Serial.println(" A");
+                // --- THROTTLE (ESC) ---
+                int throttleDuty = map((int)throttleValue, -100, 100, throttleMin, throttleMax);
+                ledcWrite(ESC_PIN, throttleDuty);
+                
+                // Send IMU + Load Cell data back to PC
+                // Format: A[x,y,z]G[x,y,z]L[loadcell]
+                String imuData = "A" + String(linAccX, 2) + "," + String(linAccY, 2) + "," + String(linAccZ, 2) + 
+                                 "G" + String(gyroX, 2) + "," + String(gyroY, 2) + "," + String(gyroZ, 2) +
+                                 "L" + String(loadCellGrams, 1);
+                udp.beginPacket(udp.remoteIP(), udp.remotePort());
+                udp.print(imuData);
+                udp.endPacket();
+            }
+        }
+    }
 }
