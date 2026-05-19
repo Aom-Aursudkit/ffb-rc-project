@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ffb_common import read_log_csv
 
-CSV_FILE = "data/ffb_tests/surface_jolt.csv"
+CSV_FILE = "../data/ffb_tests/surface_jolt.csv"
 TITLE = "Surface Jolt"
 
 times, steers, velocities, loads, ffb_forces, accX, accY, accZ, gyroX, gyroY, gyroZ = read_log_csv(CSV_FILE)
@@ -19,7 +19,7 @@ fig.suptitle(TITLE, fontsize=14, fontweight='bold')
 axes[0, 0].plot(times, ffb_forces, 'b-', linewidth=1.5)
 axes[0, 0].set_xlabel('Time (s)')
 axes[0, 0].set_ylabel('FFB Force')
-axes[0, 0].set_title('FFB vs Time (Surface Jolt)')
+axes[0, 0].set_title('FFB vs Time')
 axes[0, 0].grid(True, linestyle='--', alpha=0.5)
 
 axes[0, 1].scatter(np.abs(accZ), np.abs(ffb_forces), alpha=0.6, s=20)
@@ -37,7 +37,7 @@ if len(accZ) > 1:
 axes[1, 0].plot(times, accZ, 'g-', linewidth=1.5)
 axes[1, 0].set_xlabel('Time (s)')
 axes[1, 0].set_ylabel('accZ (m/s^2)')
-axes[1, 0].set_title('accZ vs Time (Road Bumps)')
+axes[1, 0].set_title('accZ vs Time')
 axes[1, 0].grid(True, linestyle='--', alpha=0.5)
 
 axes[1, 1].plot(times, steers, 'm-', linewidth=1.5)

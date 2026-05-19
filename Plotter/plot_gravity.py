@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ffb_common import read_log_csv
 
-CSV_FILE = "data/ffb_tests/gravity.csv"
+CSV_FILE = "../data/ffb_tests/gravity.csv"
 TITLE = "Gravity Torque"
 
 times, steers, velocities, loads, ffb_forces, accX, accY, accZ, gyroX, gyroY, gyroZ = read_log_csv(CSV_FILE)
@@ -19,7 +19,7 @@ fig.suptitle(TITLE, fontsize=14, fontweight='bold')
 axes[0, 0].plot(times, ffb_forces, 'b-', linewidth=1.5)
 axes[0, 0].set_xlabel('Time (s)')
 axes[0, 0].set_ylabel('FFB Force')
-axes[0, 0].set_title('FFB vs Time (Gravity Compensation)')
+axes[0, 0].set_title('FFB vs Time')
 axes[0, 0].grid(True, linestyle='--', alpha=0.5)
 
 axes[0, 1].scatter(accX, ffb_forces, alpha=0.6, s=20)
@@ -37,7 +37,7 @@ if len(accX) > 1:
 axes[1, 0].plot(times, accX, 'g-', linewidth=1.5)
 axes[1, 0].set_xlabel('Time (s)')
 axes[1, 0].set_ylabel('accX (m/s^2)')
-axes[1, 0].set_title('accX vs Time (Tilt)')
+axes[1, 0].set_title('accX vs Time')
 axes[1, 0].grid(True, linestyle='--', alpha=0.5)
 
 axes[1, 1].plot(times, steers, 'm-', linewidth=1.5)

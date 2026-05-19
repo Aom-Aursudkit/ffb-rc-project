@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ffb_common import read_log_csv
 
-CSV_FILE = "data/ffb_tests/damping.csv"
+CSV_FILE = "../data/ffb_tests/damping.csv"
 TITLE = "Damping Force"
 
 times, steers, velocities, loads, ffb_forces, accX, accY, accZ, gyroX, gyroY, gyroZ = read_log_csv(CSV_FILE)

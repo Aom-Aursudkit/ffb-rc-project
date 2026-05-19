@@ -49,8 +49,8 @@ drift_threshold_accel = 3.0
 # FFB GAINS
 GAIN_DAMPING = 2000     # Damping: resists turning faster
 GAIN_FRICTION = 2000    # Friction: resists motion, stronger at low speeds
-GAIN_LOAD = 2000        # Load Resistance: direct force from load cell (real-world resistance)
-GAIN_STIFFNESS = 500    # Passive stiffness: resists being turned away from center
+GAIN_LOAD = 500        # Load Resistance: direct force from load cell (real-world resistance)
+GAIN_STIFFNESS = 1000    # Passive stiffness: resists being turned away from center
 GAIN_SAT = 20000        # Self-Aligning Torque (active self-centering)
 GAIN_GRAVITY = 1500        # Gravity Torque: simulates weight of steering wheel
 GAIN_SURFACE_JOLT = 500    # Surface Jolt: simulates bumps/road
@@ -89,19 +89,19 @@ def calculate_forces(steer_raw, accX, accY, accZ, gyroX, gyroY, gyroZ, velocity,
     speed_factor = min(abs(velocity) * 2.0, 1.0)
     friction_mag = GAIN_FRICTION * (1.0 - speed_factor)
     friction = friction_mag if steer_velocity > 0 else (-friction_mag if steer_velocity < 0 else 0)
-    stiffness_mag = steer_raw * GAIN_STIFFNESS
+    stiffness_mag = abs(steer_raw) * GAIN_STIFFNESS
     stiffness = stiffness_mag if steer_velocity > 0 else (-stiffness_mag if steer_velocity < 0 else 0)
 
 
     # Load Cell adds real-world steering resistance as Passive force (direct measurement, not scaled by angle)
-    load_resistance_mag = (loadCell) * GAIN_LOAD
-    load_resistance = load_resistance_mag if steer_velocity > 0 else (-load_resistance_mag if steer_velocity < 0 else 0)
+    load_resistance = (loadCell) * GAIN_LOAD
+    # load_resistance = load_resistance_mag if steer_velocity > 0 else (-load_resistance_mag if steer_velocity < 0 else 0)
 
     resistive_torque = damping + friction + load_resistance + stiffness
 
     # 2. ACTIVE FORCES (Restorative - SAT, Gravity, Surface Jolt)
     sat = steer_raw * (speed_factor * GAIN_SAT)
-    gravity_torque = accX * GAIN_GRAVITY # Gravity tilt
+    gravity_torque = -accX * GAIN_GRAVITY # Gravity tilt
     surface_jolt = accZ * GAIN_SURFACE_JOLT
 
     active_torque = sat + gravity_torque + surface_jolt
