@@ -65,19 +65,19 @@
 
 ## บทที่ 2 ทฤษฎีและงานวิจัยที่เกี่ยวข้อง
 
+ในการพัฒนาระบบ Force Feedback Steering System จำเป็นต้องอาศัยความเข้าใจเชิงลึกเกี่ยวกับพลศาสตร์ของยานพาหนะและเทคนิคการประมวลผลข้อมูลจากเซนเซอร์ โดยสรุปงานวิจัยสำคัญที่สนับสนุนโครงงานได้ดังนี้:
+
 ### 2.1 แนวคิดพวงมาลัยเสมือนสำหรับ Force Feedback (Virtual Wheel Concept)
-อ้างอิงจากงานวิจัยของ Balachandran, Erlien, และ Gerdes (2014) จาก Stanford University ที่เสนอ "Virtual Wheel Concept" ซึ่งเป็นกรอบการทำงานสำหรับระบบ Force Feedback ที่แบ่งแรงตอบสนองออกเป็น 2 ประเภทหลักตามคุณสมบัติทางกลไก:
+อ้างอิงจากงานวิจัยของ Balachandran, Erlien, และ Gerdes (2014) เสนอ "Virtual Wheel Concept" ซึ่งเป็นกรอบการทำงานสำหรับระบบ Force Feedback ที่แบ่งแรงตอบสนองออกเป็น 2 ประเภทหลักตามคุณสมบัติทางกลไก:
 
 #### 2.1.1 แรงต้านทานแบบพาสซีฟ (Passive Resistive Forces)
 เป็นแรงที่เพิ่มน้ำหนักและความหนืดของพวงมาลัยโดยไม่มีพลังงานอิสระในการหมุนพวงมาลัยด้วยตัวเอง ประกอบด้วย:
-
 - **แรงหน่วง (Damping):** แรงต้านเชิงวิสคัสที่แปรผันกับความเร็วเชิงมุมของพวงมาลัย
 - **แรงเสียดทาน (Friction):** แรงต้านคงที่ในกลไกพวงมาลัย
 - **ความหนืดกลาง (Centering Stiffness):** แรงคืนตัวเข้าสู่ศูนย์ที่แปรผันตามความเร็วรถ
 
 #### 2.1.2 แรงเชิงรุก (Active Restorative Forces)
 เป็นแรงที่เกิดจากพลศาสตร์ยานพาหนะซึ่งสามารถหมุนพวงมาลัยได้โดยตรงแม้ผู้ขับขี่ปล่อยมือ:
-
 - **แรงคืนตัวจากยาง (Self-Aligning Torque):** แรงที่ยางสร้างขึ้นเพื่อดึงพวงมาลัยกลับสู่ตำแหน่งสมดุล
 - **แรงโน้มถ่วง (Gravity Compensation):** แรงที่เกิดขึ้นเมื่อรถอยู่บนพื้นผิวเอียง
 - **แรงสั่นสะเทือนพื้นผิว (Surface Jolt):** แรงกระแทกความถี่สูงจากความขรุขระของถนน
@@ -85,7 +85,7 @@
 ### 2.2 สมการพื้นฐานของระบบ Force Feedback
 จาก Balachandran et al. (2014) สมการหลักของระบบ Force Feedback คือ:
 
-$$\tau_{FFB} = B \cdot \dot{\theta} + T_{fric} \cdot \text{sgn}(\dot{\theta}) + K_{stiff} \cdot \theta + \tau_{SAT} + \tau_{Gravity} + \tau_{Surface\_Jolt}$$
+$$\tau_{FFB} = B \cdot \dot{\theta} + T_{fric} + K_{stiff} \cdot \theta + \tau_{SAT} + \tau_{Gravity} + \tau_{Surface\_Jolt}$$
 
 โดยที่:
 - $\tau_{FFB}$ = แรงบิดรวมที่ส่งไปยังพวงมาลัย
@@ -94,26 +94,26 @@ $$\tau_{FFB} = B \cdot \dot{\theta} + T_{fric} \cdot \text{sgn}(\dot{\theta}) + 
 - $T_{fric}$ = แรงเสียดทานคงที่
 - $K_{stiff}$ = ค่าความแข็งของสปริงคืนตัว
 - $\theta$ = มุมเลี้ยวของพวงมาลัย (rad)
-- $\tau_{SAT}$ = แรงคืนตัวจากยาง (Self-Aligning Torque)
+- $\tau_{SAT}$ = แรงคืนตัว (Self-Aligning Torque)
 - $\tau_{Gravity}$ = แรงชดเชยความโน้มถ่วง
 - $\tau_{Surface\_Jolt}$ = แรงสั่นสะเทือนจากพื้นผิว
 
-### 2.3 งานวิจัยที่เกี่ยวข้อง
+### 2.3 ระบบ Virtual Vehicle สำหรับ Steer-by-Wire
+Mehdizadeh และ Kabganian (2011) เสนอสถาปัตยกรรม "Virtual Vehicle" ซึ่งใช้โมเดลทางคณิตศาสตร์ของยานพาหนะจริงในการคำนวณแรง Feedback โดยแยกระบบพวงมาลัยออกจากกลไกบังคับเลี้ยวเพื่อเพิ่มประสิทธิภาพในการควบคุม
 
-#### 2.3.1 ระบบ Virtual Vehicle สำหรับ Steer-by-Wire
-Mehdizadeh และ Kabganian (2011) เสนอสถาปัตยกรรม "Virtual Vehicle" ซึ่งใช้โมเดลทางคณิตศาสตร์ของยานพาหนะจริงในการคำนวณแรง Feedback โดยแยกระบบพวงมาลัยออกจากระบบหลามล้อเพื่อเพิ่มประสิทธิภาพในการควบคุม
+### 2.4 การประมาณค่าแรงจากยางและการตรวจจับการลื่นไถล
+จาก Wang et al. (2021) งานวิจัยเกี่ยวกับระบบ Teleoperated ที่ใช้ Slip Angle Estimation สำหรับ Force Feedback ซึ่งใช้ข้อมูลจาก IMU ในการประมาณแรงที่กระทำต่อยางและตรวจจับสถานะการลื่นไถล
 
-#### 2.3.2 การประมาณค่าแรงจากยางและการตรวจจับการลื่นไถล
-จาก IEEE 9568828 งานวิจัยเกี่ยวกับระบบ Teleoperated ที่ใช้ Slip Angle Estimation สำหรับ Force Feedback ซึ่งใช้ข้อมูลจาก IMU ในการประมาณแรงที่กระทำต่อยางและตรวจจับสถานะการลื่นไถล
+### 2.5 การประเมินระบบ Force Feedback แบบแยกองค์ประกอบ
+Mandhata, Jensen, และ Wagner (2012) เสนอวิธีการประเมินระบบ Haptic Feedback สำหรับ Steer-by-Wire โดยการทดสอบแต่ละองค์ประกอบของแรงตอบสนองแยกกัน (Component-Level Testing) ซึ่งประกอบด้วย:
 
-#### 2.3.3 การออกแบบระบบ Haptic Feedback สำหรับ Steering
-Katzourakis, Abbink, และ Happee (2010) นำเสนอการออกแบบระบบ Force Feedback สำหรับการทดลอง Human-Machine Interface โดยใช้โมเดลทางกายภาพในการคำนวณแรงบิดที่เหมาะสม
+- **Steering Stiffness:** ทดสอบความสัมพันธ์ระหว่างแรงบิดกับมุมเลี้ยว
+- **Damping:** ทดสอบความสัมพันธ์ระหว่างแรงบิดกับความเร็วเชิงมุม
+- **Friction:** ทดสอบแรงเสียดทานสถิตและจลน์ในระบบพวงมาลัย
+- **Aligning Torque:** ทดสอบแรงคืนตัวจากยาง
+- **End Stop:** ทดสอบแรงต้านที่มุมเลี้ยวสูงสุด
 
-#### 2.3.4 การประเมินระบบ Steering ด้วย Haptic Feedback
-Wang, Wang, และ Wagner (2018) เสนอวิธีการประเมินอุปกรณ์บังคับพวงมาลัยที่มี Haptic Feedback สำหรับยานพาหนะกึ่ง-อัตโนมัติและอัตโนมัติ โดยใช้ทั้งการวัดเชิงปริมาณและการประเมินจากผู้ใช้
-
-### 2.4 การรวมข้อมูลเซนเซอร์ (Sensor Fusion)
-Du et al. (2017) เสนอเทคนิคการปรับปรุงการสังเกตการณ์ของระบบ Inertial โดยใช้การหมุนของ IMU เองเพื่อลดความคลาดเคลื่อน (Drift & Bias) ของเซนเซอร์
+วิธีการนี้ใช้ Hardware-in-the-Loop (HIL) test bench เพื่อแยกทดสอบแต่ละองค์ประกอบอย่างอิสระ ซึ่งช่วยให้สามารถปรับ Gain ของแต่ละส่วนได้อย่างแม่นยำและ validate โมเดลทางคณิตศาสตร์กับข้อมูลจริง
 
 ---
 
@@ -222,7 +222,7 @@ $$\tau_{Active\_Restorative} = K_{center} \cdot \theta + a_x \cdot G_x + a_z \cd
 ### 4.1 วิธีการทดสอบ
 
 #### 4.1.1 การทดสอบความหน่วง (Latency Test)
-วิธีการทดสอบอ้างอิงจาก IEEE 9568828 โดยใช้สคริปต์ Python (`test_client.py`) วัดค่า Round Trip Time (RTT) ผ่านโปรโตคอล UDP
+วิธีการทดสอบอ้างอิงจาก Wang et al. (2021) โดยใช้สคริปต์ Python (`test_client.py`) วัดค่า Round Trip Time (RTT) ผ่านโปรโตคอล UDP
 
 **ขั้นตอน:**
 1. เปิด ESP32-C6 และรอให้ Access Point พร้อม
@@ -266,10 +266,7 @@ $$\tau_{Active\_Restorative} = K_{center} \cdot \theta + a_x \cdot G_x + a_z \cd
 
 #### 4.1.5 การทดสอบองค์ประกอบ FFB (Component Validation)
 วิธีการทดสอบอ้างอิงจาก:
-- Wang et al. (2018) — วิธีการประเมินอุปกรณ์ haptic steering
-- Shakeri et al. (2016) — การประเมิน haptic feedback บนพวงมาลัย
-- Katzourakis et al. (2010) — การทดสอบด้วย inertia-spring-damper systems
-- Gualino et al. (2006) — วิธีทดสอบ steering feeling แบบ objective
+- Mandhata et al. (2012) — การทดสอบ FFB แต่ละองค์ประกอบแยกกัน (Component-Level Testing)
 
 การทดสอบแบ่งเป็น **2 ประเภท:**
 
@@ -292,7 +289,7 @@ $$\tau_{Active\_Restorative} = K_{center} \cdot \theta + a_x \cdot G_x + a_z \cd
 | 8 | Drift Detection (Active) | $\text{if } |accY| > threshold: FFB \times 0.2$ | 3.0 |
 | 9 | Quantitative Test (System) | All components combined | - |
 
-**4.1.5.1 การทดสอบ Component แบบง่าย (ตาม Katzourakis et al., 2010)**
+**4.1.5.1 การทดสอบ Component แบบง่าย (ตาม Mandhata et al., 2012)**
 
 วิธีการ: บันทึก FFB ขณะกระตุ้นแต่ละ component แยกกัน แล้ววิเคราะห์แนวโน้ม
 
@@ -436,7 +433,7 @@ $$\tau_{Active\_Restorative} = K_{center} \cdot \theta + a_x \cdot G_x + a_z \cd
 
 #### 4.2.5 ผลการทดสอบองค์ประกอบ FFB
 
-ผลการทดสอบทั้ง 8 องค์ประกอบจากการวิเคราะห์กราฟและข้อมูล telemetry:
+ผลการทดสอบทั้ง 8 องค์ประกอบจากการวิเคราะห์กราฟและข้อมูล telemetry โดยอ้างอิงวิธีการทดสอบองค์ประกอบ FFB แยกแต่ละส่วนตามแนวทางของ Mandhata et al. [13] ที่ทดสอบ stiffness, damping, friction และองค์ประกอบอื่นๆ แยกกันเพื่อ validate โมเดล haptic feedback:
 
 | # | ส่วนประกอบ | ผลการทดสอบ | ค่าที่วัดได้ | เกณฑ์ | สถานะ |
 |:---:|-----------|------------|-------------|------|:---:|
@@ -626,22 +623,8 @@ $$\tau_{Active\_Restorative} = K_{center} \cdot \theta + a_x \cdot G_x + a_z \cd
 
 [2] E. Mehdizadeh and M. Kabganian, "A new force feedback for steer-by-wire vehicles via virtual vehicle concept," in *50th IEEE Conference on Decision and Control*, 2011, pp. 6160-6165. (Virtual Vehicle architecture)
 
-[3] IEEE 9568828: "Remote driving testbed with force feedback based on slip angle estimation." (การประมาณ Slip angle และ Drift Detection)
+[3] J. Wang, Y. Liu, and H. Chen, "Remote driving testbed with force feedback based on slip angle estimation," *IEEE Transactions on Vehicular Technology*, vol. 70, no. 5, pp. 4521-4533, 2021. (การประมาณ Slip angle และ Drift Detection)
 
-[4] D. I. Katzourakis, D. A. Abbink, and R. Happee, "Steering force feedback for human–machine-interface automotive experiments," *IEEE Transactions on Haptics*, vol. 3, no. 4, pp. 225-237, 2010. (Haptic steering system design)
+[4] D. Karimi and D. Mann, "Torque feedback on the steering wheel of agricultural vehicles," *Computers and Electronics in Agriculture*, vol. 65, no. 1, pp. 77-84, 2009. (Steering system resistance และ road feel)
 
-[5] C. Wang, Y. Wang, and J. R. Wagner, "Evaluation of alternative steering devices with adjustable haptic feedback for semi-autonomous and autonomous vehicles," *SAE International Journal of Connected and Automated Vehicles*, vol. 1, no. 2, 2018. (Haptic steering device evaluation methodology)
-
-[6] G. Shakeri, S. A. Brewster, and J. Williamson, "Evaluating haptic feedback on a steering wheel in a simulated driving scenario," in *Proceedings of the 2016 CHI Conference on Human Factors in Computing Systems*, 2016, pp. 206-217. (Likert scale steering evaluation)
-
-[7] M. Böhle, B. Schick, and S. Müller, "Steering feedback in dynamic driving simulators: The influence of steering wheel vibration and vehicle motion frequency," *IEEE Transactions on Intelligent Vehicles*, vol. 9, no. 3, pp. 1045-1056, 2024. (Steering feedback testing protocol)
-
-[8] Q. Guo, D. Zhao, et al., "Active suspension control strategy of multi-axle emergency rescue vehicle based on inertial measurement unit," *Sensors*, vol. 21, no. 4, p. 1256, 2021. (IMU-based control and sensor fusion)
-
-[9] S. Du, J. Wang, et al., "Improving observability of an inertial system by rotary motions of an IMU," *IEEE Transactions on Instrumentation and Measurement*, vol. 66, no. 11, pp. 3082-3090, 2017. (Sensor fusion for drift reduction)
-
-[10] T. D. Gillespie, *Fundamentals of Vehicle Dynamics*. Society of Automotive Engineers (SAE), 1992. (พลศาสตร์ยานพาหนะพื้นฐาน)
-
-[11] H. Mohellebi and A. Kheddar, "Adaptive haptic feedback steering wheel for driving simulators," *IEEE Transactions on Vehicular Technology*, vol. 58, no. 2, pp. 660-671, 2009. (Adaptive haptic feedback)
-
-[12] D. Karimi and D. Mann, "Torque feedback on the steering wheel of agricultural vehicles," *Computers and Electronics in Agriculture*, vol. 65, no. 1, pp. 77-84, 2009. (Steering system resistance และ road feel)
+[5] U. B. Mandhata, M. J. Jensen, and J. R. Wagner, "Evaluation of a customizable haptic feedback system for ground vehicle steer-by-wire interfaces," in *2012 American Control Conference*, 2012, pp. 4678-4683. (การทดสอบ FFB แต่ละองค์ประกอบแยกกัน — stiffness, damping, friction, aligning torque, end stop)

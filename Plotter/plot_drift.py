@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from ffb_common import read_log_csv
 
-CSV_FILE = "../data/ffb_tests/drift.csv"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(script_dir, '..', 'data', 'ffb_tests', 'drift.csv')
 TITLE = "Drift Detection"
 
 times, steers, velocities, loads, ffb_forces, accX, accY, accZ, gyroX, gyroY, gyroZ = read_log_csv(CSV_FILE)
@@ -53,8 +55,9 @@ axes[1, 1].set_title('FFB Ratio (should drop to ~0.2 during drift)')
 axes[1, 1].grid(True, linestyle='--', alpha=0.5)
 
 plt.tight_layout()
-plt.savefig(CSV_FILE.replace('.csv', '_result.png'), dpi=150)
-plt.show()
+out_path = CSV_FILE.replace('.csv', '_result.png')
+plt.savefig(out_path, dpi=150)
+print(f"Saved: {out_path}")
 
 print(f"\n=== Drift Detection Analysis ===")
 print(f"Formula: if |accY| > 3.0 x (1 + |v|) then FFB x 0.2")

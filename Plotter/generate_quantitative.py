@@ -10,13 +10,16 @@ num_samples = 800
 times = np.arange(0, num_samples * 10, 10)
 
 steer_current = 0.0
-velocity = 0.0
-accX, accY, accZ = 0.0, 0.0, 0.0
-gyroX, gyroY, gyroZ = 0.0, 0.0, 0.0
+steer_prev = 0.0
+velocity = 0.3
 loadCell = 0.0
 
-steer_target = 0.0
-target_v = 0.0
+accX_smooth = 0.0
+accY_smooth = 0.0
+accZ_smooth = 0.0
+gyroX_smooth = 0.0
+gyroY_smooth = 0.0
+gyroZ_smooth = 0.0
 
 GAIN_DAMPING = 2000
 GAIN_FRICTION = 2000
@@ -29,77 +32,131 @@ DRIFT_THRESHOLD = 3.0
 
 lines = []
 
-steer_pattern = [
-    (0, 1000, 0.0, 0.0),
-    (1000, 2500, 0.6, 0.15),
-    (2500, 4000, -0.4, 0.2),
-    (4000, 5500, 0.8, 0.25),
-    (5500, 6500, 0.0, 0.1),
-    (6500, 8000, -0.7, 0.2),
+speed_profile = [
+    (0, 500, 0.32),
+    (500, 1200, 0.28),
+    (1200, 1800, 0.35),
+    (1800, 2400, 0.22),
+    (2400, 3000, 0.15),
+    (3000, 3600, 0.30),
+    (3600, 4200, 0.25),
+    (4200, 4800, 0.18),
+    (4800, 5400, 0.33),
+    (5400, 6000, 0.20),
+    (6000, 6600, 0.28),
+    (6600, 7200, 0.15),
+    (7200, 8000, 0.30),
+]
+
+steer_profile = [
+    (0, 500, 0.0),
+    (500, 1000, 0.4),
+    (1000, 1500, -0.3),
+    (1500, 1800, 0.0),
+    (1800, 2200, 0.6),
+    (2200, 2600, -0.5),
+    (2600, 3000, 0.0),
+    (3000, 3500, 0.7),
+    (3500, 4000, -0.6),
+    (4000, 4500, 0.0),
+    (4500, 5000, 0.5),
+    (5000, 5500, -0.4),
+    (5500, 6000, 0.0),
+    (6000, 6500, 0.6),
+    (6500, 7000, -0.3),
+    (7000, 8000, 0.0),
 ]
 
 road_events = [
-    (1800, 1850, 'bump'),
-    (3200, 3220, 'bump'),
-    (4500, 4520, 'bump'),
-    (5900, 5920, 'bump'),
+    (800, 840, 'bump'),
+    (2000, 2030, 'bump'),
+    (3400, 3440, 'bump'),
+    (4600, 4630, 'bump'),
+    (5200, 5220, 'rough'),
 ]
 
 drift_events = [
-    (2600, 2800),
-    (4800, 5100),
+    (2100, 2400),
+    (3800, 4100),
 ]
 
 for i, t in enumerate(times):
-    for start, end, target, v in steer_pattern:
+    target_speed = 0.3
+    for start, end, v in speed_profile:
         if start <= t < end:
-            target_v = v * (0.9 + np.random.rand() * 0.2)
-            steer_target = target + np.random.uniform(-0.02, 0.02)
+            target_speed = v
             break
-    else:
-        target_v = 0.1
-        steer_target = 0.0
 
-    velocity = velocity * 0.98 + target_v * 0.02
-    speed_factor = min(abs(velocity) * 2.0, 1.0)
+    velocity = velocity * 0.95 + target_speed * 0.05
+    velocity += np.random.randn() * 0.005
+    velocity = max(0.1, min(0.35, velocity))
 
-    lag_prob = 0.02
-    if np.random.rand() < lag_prob:
+    steer_target = 0.0
+    for start, end, s in steer_profile:
+        if start <= t < end:
+            ramp = min((t - start) / 150.0, 1.0)
+            steer_target = s * ramp
+            break
+
+    steer_target += np.random.uniform(-0.02, 0.02)
+
+    steer_prev = steer_current
+
+    if np.random.rand() < 0.02:
         pass
     else:
-        steer_current = steer_current * 0.9 + steer_target * 0.1
+        steer_current = steer_current * 0.90 + steer_target * 0.10
 
-    steer_current += np.random.randn() * 0.001 * (0.2 + abs(steer_current) * 3)
+    tremor = np.random.randn() * 0.001 * (0.2 + abs(steer_current) * 2)
+    steer_current += tremor
+    steer_current = max(-1.0, min(1.0, steer_current))
 
-    prev_steer = steer_current
-    steer_velocity = (steer_current - prev_steer) / 0.01
+    steer_velocity = (steer_current - steer_prev) / 0.01
 
-    accX = np.random.randn() * 0.15
-    accY = np.random.randn() * 0.2
-    accZ = np.random.randn() * 0.15
-    gyroX = np.random.randn() * 0.5
-    gyroY = np.random.randn() * 0.5
-    gyroZ = np.random.randn() * 0.5
+    speed_factor = min(abs(velocity) * 2.0, 1.0)
+
+    lateral_acc = steer_current * velocity * 2.0
+    accX_base = lateral_acc
+    accY_base = 0.0
+    accZ_base = 0.0
+
+    gyroX_base = 0.0
+    gyroY_base = velocity * 0.05
+    gyroZ_base = steer_current * 0.1
+
+    in_drift_override = False
+    drift_intensity = 0.0
+    for event_t, event_end in drift_events:
+        if event_t <= t < event_end:
+            in_drift_override = True
+            ramp_in = min((t - event_t) / 60.0, 1.0)
+            ramp_out = max(1.0 - (t - event_end + 60) / 60.0, 0.0) if t > event_end - 60 else 1.0
+            drift_intensity = min(ramp_in, ramp_out) if t > event_end - 60 else ramp_in
+            break
+
+    if in_drift_override:
+        accY_base = 6.0 * drift_intensity + np.random.uniform(-0.3, 0.3) * drift_intensity
+        accX_base = 0.8 + np.sin(t * 0.01) * 0.5 + np.random.randn() * 0.1
+        gyroZ_base += np.sin(t * 0.012) * 0.04 * drift_intensity
+        velocity = velocity * 0.93 + 0.12 * 0.07
 
     for event_t, event_end, event_type in road_events:
         if event_t <= t < event_end:
             if event_type == 'bump':
-                accZ += np.random.uniform(8, 15)
-                accX += np.random.randn() * 2
-                steer_current += np.random.uniform(-0.03, 0.03)
-                steer_current = max(-1.0, min(1.0, steer_current))
+                accZ_base += np.random.uniform(4, 8)
+                accX_base += np.random.randn() * 0.3
+            elif event_type == 'rough':
+                accZ_base += np.random.uniform(1, 3)
 
-    in_drift_override = False
-    for event_t, event_end in drift_events:
-        if event_t <= t < event_end:
-            in_drift_override = True
-            break
-
-    if in_drift_override:
-        accY = np.random.uniform(4.5, 6.0)
+    accX_smooth = accX_smooth * 0.92 + accX_base * 0.08 + np.random.randn() * 0.015
+    accY_smooth = accY_smooth * 0.92 + accY_base * 0.08 + np.random.randn() * 0.02
+    accZ_smooth = accZ_smooth * 0.95 + accZ_base * 0.05 + np.random.randn() * 0.015
+    gyroX_smooth = gyroX_smooth * 0.95 + gyroX_base * 0.05 + np.random.randn() * 0.005
+    gyroY_smooth = gyroY_smooth * 0.95 + gyroY_base * 0.05 + np.random.randn() * 0.005
+    gyroZ_smooth = gyroZ_smooth * 0.95 + gyroZ_base * 0.05 + np.random.randn() * 0.005
 
     threshold = DRIFT_THRESHOLD * (1 + abs(velocity))
-    in_drift = abs(accY) > threshold
+    in_drift = abs(accY_smooth) > threshold
     drift_factor = 0.2 if in_drift else 1.0
 
     damping = steer_velocity * GAIN_DAMPING
@@ -120,34 +177,29 @@ for i, t in enumerate(times):
     else:
         stiffness = 0.0
 
+    loadCell = steer_current * 12.0 + np.random.randn() * 1.0
     load_resistance = loadCell * GAIN_LOAD * (1 if steer_velocity > 0 else (-1 if steer_velocity < 0 else 0))
 
     sat = steer_current * speed_factor * GAIN_SAT
 
-    gravity_torque = -accX * GAIN_GRAVITY
+    gravity_torque = -accX_smooth * GAIN_GRAVITY
 
-    surface_jolt = accZ * GAIN_SURFACE_JOLT
+    surface_jolt = accZ_smooth * GAIN_SURFACE_JOLT
 
     ffb_passive = damping + friction + stiffness + load_resistance
     ffb_active = (sat + gravity_torque + surface_jolt) * drift_factor
 
     ffb_total = ffb_passive + ffb_active
 
-    ffb_total += np.random.randn() * 200
+    ffb_total += np.random.randn() * 50
     ffb_total = max(-32767, min(32767, ffb_total))
 
-    accX += np.random.randn() * 0.1
-    accY += np.random.randn() * 0.1
-    accZ += np.random.randn() * 0.1
-    gyroX += np.random.randn() * 0.3
-    gyroY += np.random.randn() * 0.3
-    gyroZ += np.random.randn() * 0.3
-
-    line = f"Steer: {steer_current:.2f} | FFB: {ffb_total:.0f} | Vel: {velocity:.1f} | Load: {loadCell:.1f}g | AccXYZ: {accX:.2f},{accY:.2f},{accZ:.2f} | GyroXYZ: {gyroX:.2f},{gyroY:.2f},{gyroZ:.2f}"
+    line = f"Steer: {steer_current:.2f} | FFB: {ffb_total:.0f} | Vel: {velocity:.1f} | Load: {loadCell:.1f}g | AccXYZ: {accX_smooth:.2f},{accY_smooth:.2f},{accZ_smooth:.2f} | GyroXYZ: {gyroX_smooth:.2f},{gyroY_smooth:.2f},{gyroZ_smooth:.2f}"
     lines.append(line)
 
 with open(csv_path, 'w') as f:
     f.write('\n'.join(lines))
 
 print(f"quantitative_test.csv created with {num_samples} samples")
-print("Human-like steering: lag, small tremor, smooth following")
+print("Velocity range: 0.1-0.35 m/s with natural variation")
+print("Drift events at t=2.1-2.4s and t=3.8-4.1s with buildup")

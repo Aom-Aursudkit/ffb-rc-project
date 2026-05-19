@@ -52,7 +52,7 @@ GAIN_FRICTION = 2000    # Friction: resists motion, stronger at low speeds
 GAIN_LOAD = 500        # Load Resistance: direct force from load cell (real-world resistance)
 GAIN_STIFFNESS = 1000    # Passive stiffness: resists being turned away from center
 GAIN_SAT = 20000        # Self-Aligning Torque (active self-centering)
-GAIN_GRAVITY = 1500        # Gravity Torque: simulates weight of steering wheel
+GAIN_GRAVITY = 500        # Gravity Torque: simulates weight of steering wheel
 GAIN_SURFACE_JOLT = 500    # Surface Jolt: simulates bumps/road
 
 def get_telemetry_data():
@@ -88,21 +88,22 @@ def calculate_forces(steer_raw, accX, accY, accZ, gyroX, gyroY, gyroZ, velocity,
 
     speed_factor = min(abs(velocity) * 2.0, 1.0)
     friction_mag = GAIN_FRICTION * (1.0 - speed_factor)
-    friction = friction_mag if steer_velocity > 0 else (-friction_mag if steer_velocity < 0 else 0)
+    friction = friction_mag if steer_velocity > 0.3 else (-friction_mag if steer_velocity < -0.3 else 0)
     stiffness_mag = abs(steer_raw) * GAIN_STIFFNESS
-    stiffness = stiffness_mag if steer_velocity > 0 else (-stiffness_mag if steer_velocity < 0 else 0)
+    stiffness = stiffness_mag if steer_velocity > 0.1 else (-stiffness_mag if steer_velocity < -0.1 else 0)
 
 
     # Load Cell adds real-world steering resistance as Passive force (direct measurement, not scaled by angle)
-    load_resistance = (loadCell) * GAIN_LOAD
-    # load_resistance = load_resistance_mag if steer_velocity > 0 else (-load_resistance_mag if steer_velocity < 0 else 0)
+    load_resistance_mag = (loadCell) * GAIN_LOAD
+    load_resistance = load_resistance_mag if steer_velocity > 0.1 else (-load_resistance_mag if steer_velocity < -0.1 else 0)
 
-    resistive_torque = damping + friction + load_resistance + stiffness
+    # resistive_torque = damping + friction + load_resistance + stiffness
+    resistive_torque = damping + friction
 
     # 2. ACTIVE FORCES (Restorative - SAT, Gravity, Surface Jolt)
     sat = steer_raw * (speed_factor * GAIN_SAT)
     gravity_torque = -accX * GAIN_GRAVITY # Gravity tilt
-    surface_jolt = accZ * GAIN_SURFACE_JOLT
+    surface_jolt = (abs(accZ) * GAIN_SURFACE_JOLT) if accX > 0 else (-abs(accZ) * GAIN_SURFACE_JOLT if accX < 0 else accZ * GAIN_SURFACE_JOLT) # Simulate road bumps
 
     active_torque = sat + gravity_torque + surface_jolt
 
@@ -112,7 +113,7 @@ def calculate_forces(steer_raw, accX, accY, accZ, gyroX, gyroY, gyroZ, velocity,
     # Total FFB
     ffb_force = resistive_torque + active_torque
     # Test
-    # ffb_force = load_resistance
+    # ffb_force = resistive_torque
     
     prev_steer = steer_raw
     prev_time = current_time

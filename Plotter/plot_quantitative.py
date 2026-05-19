@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from ffb_common import read_log_csv
 
-CSV_FILE = "../data/ffb_tests/quantitative_test.csv"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(script_dir, '..', 'data', 'ffb_tests', 'quantitative_test.csv')
 TITLE = "Quantitative System Test"
 
 times, steers, velocities, loads, ffb_forces, accX, accY, accZ, gyroX, gyroY, gyroZ = read_log_csv(CSV_FILE)
@@ -91,13 +93,12 @@ axes[1, 2].set_ylabel('Mean |FFB|')
 axes[1, 2].set_title(f'Drift Detection (ratio: {drift_ratio:.2f})')
 axes[1, 2].grid(True, linestyle='--', alpha=0.5)
 
-axes[2, 0].plot(times_sec, accY, 'r-', linewidth=1, label='accY')
-axes[2, 0].plot(times_sec, thresholds, 'g--', linewidth=1, label='Threshold')
-axes[2, 0].plot(times_sec, -thresholds, 'g--', linewidth=1)
-axes[2, 0].fill_between(times_sec, -thresholds, thresholds, alpha=0.2, color='green')
+axes[2, 0].plot(times_sec, accX, 'b-', linewidth=1, label='accX (lateral)')
+axes[2, 0].plot(times_sec, accY, 'r-', linewidth=1, label='accY (forward)')
+axes[2, 0].plot(times_sec, accZ, 'g-', linewidth=1, label='accZ (vertical)')
 axes[2, 0].set_xlabel('Time (s)')
-axes[2, 0].set_ylabel('accY (m/s^2)')
-axes[2, 0].set_title('Drift Detection: accY vs Threshold')
+axes[2, 0].set_ylabel('Acceleration (m/s^2)')
+axes[2, 0].set_title('IMU Acceleration (XYZ)')
 axes[2, 0].legend()
 axes[2, 0].grid(True, linestyle='--', alpha=0.5)
 
@@ -120,8 +121,9 @@ axes[2, 2].legend()
 axes[2, 2].grid(True, linestyle='--', alpha=0.5)
 
 plt.tight_layout()
-plt.savefig(CSV_FILE.replace('.csv', '_result.png'), dpi=150)
-plt.show()
+out_path = CSV_FILE.replace('.csv', '_result.png')
+plt.savefig(out_path, dpi=150)
+print(f"Saved: {out_path}")
 
 print(f"\n=== Quantitative System Test Results ===")
 print(f"Total samples: {len(times)}")
